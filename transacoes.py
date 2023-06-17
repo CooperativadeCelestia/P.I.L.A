@@ -1,20 +1,49 @@
-class Transacoes:
-    def __init__(self):
-        self.transacoes = []
+#include <iostream>
+#include <vector>
+#include <string>
 
-    def adicionar_transacao(self, remetente, destinatario, valor):
-        # Implemente a lógica para adicionar uma transação à lista de transações
-        transacao = {
-            "remetente": remetente,
-            "destinatario": destinatario,
-            "valor": valor
-        }
-        self.transacoes.append(transacao)
+class Transacoes {
+private:
+    std::vector<std::map<std::string, std::string>> transacoes;
 
-    def obter_transacoes_pendentes(self):
-        # Implemente a lógica para retornar a lista de transações pendentes
-        return self.transacoes
+public:
+    Transacoes() {
+        // Construtor vazio
+    }
 
-    def limpar_transacoes_pendentes(self):
-        # Implemente a lógica para limpar a lista de transações pendentes após a mineração de um bloco
-        self.transacoes = []
+    void adicionar_transacao(const std::string& remetente, const std::string& destinatario, const std::string& valor) {
+        std::map<std::string, std::string> transacao = {
+            {"remetente", remetente},
+            {"destinatario", destinatario},
+            {"valor", valor}
+        };
+        transacoes.push_back(transacao);
+    }
+
+    std::vector<std::map<std::string, std::string>> obter_transacoes_pendentes() {
+        return transacoes;
+    }
+
+    void limpar_transacoes_pendentes() {
+        transacoes.clear();
+    }
+};
+
+int main() {
+    Transacoes transacoes;
+
+    transacoes.adicionar_transacao("Remetente1", "Destinatario1", "10");
+    transacoes.adicionar_transacao("Remetente2", "Destinatario2", "5");
+
+    std::vector<std::map<std::string, std::string>> transacoesPendentes = transacoes.obter_transacoes_pendentes();
+    for (const auto& transacao : transacoesPendentes) {
+        std::cout << "Remetente: " << transacao.at("remetente") << std::endl;
+        std::cout << "Destinatario: " << transacao.at("destinatario") << std::endl;
+        std::cout << "Valor: " << transacao.at("valor") << std::endl;
+        std::cout << std::endl;
+    }
+
+    transacoes.limpar_transacoes_pendentes();
+
+    return 0;
+}

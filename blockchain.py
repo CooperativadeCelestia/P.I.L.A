@@ -1,80 +1,131 @@
-class Blockchain:
-    def __init__(self):
-        self.chain = []
-        self.pending_transactions = []
+#include <iostream>
+#include <vector>
+#include <string>
+#include <ctime>
+#include <jsoncpp/json/json.h>
+#include <openssl/sha.h>
 
-    def create_block(self, nonce, previous_hash):
-        # Implemente a lógica para criar um bloco e adicionar à cadeia
-        # O bloco pode conter informações como nonce, hash, transações, timestamp, etc.
+class Blockchain {
+public:
+    struct Transaction {
+        std::string sender;
+        std::string recipient;
+        double amount;
+    };
 
-        block = {
-            "index": len(self.chain) + 1,
-            "timestamp": time(),
-            "transactions": self.pending_transactions,
-            "nonce": nonce,
-            "previous_hash": previous_hash,
+    struct Block {
+        int index;
+        time_t timestamp;
+        std::vector<Transaction> transactions;
+        int nonce;
+        std::string previous_hash;
+    };
+
+private:
+    std::vector<Block> chain;
+    std::vector<Transaction> pending_transactions;
+
+public:
+    Blockchain() {
+        chain = std::vector<Block>();
+        pending_transactions = std::vector<Transaction>();
+    }
+
+    void create_block(int nonce, const std::string& previous_hash) {
+        Block block;
+        block.index = chain.size() + 1;
+        block.timestamp = time(nullptr);
+        block.transactions = pending_transactions;
+        block.nonce = nonce;
+        block.previous_hash = previous_hash;
+
+        pending_transactions.clear();
+
+        chain.push_back(block);
+    }
+
+    void add_transaction(const Transaction& transaction) {
+        pending_transactions.push_back(transaction);
+    }
+
+    Block get_last_block() {
+        return chain.back();
+    }
+
+    Block mine_block(const std::string& miner_address) {
+        Block last_block = get_last_block();
+        std::string previous_hash = hash_block(last_block);
+
+        int nonce = proof_of_work(previous_hash);
+
+        create_block(nonce, previous_hash);
+
+        Transaction reward_transaction;
+        reward_transaction.sender = "Sistema";
+        reward_transaction.recipient = miner_address;
+        reward_transaction.amount = 10;  // Ajuste a recompensa conforme necessário
+
+        add_transaction(reward_transaction);
+
+        return get_last_block();
+    }
+
+    std::string hash_block(const Block& block) {
+        Json::Value json_block;
+        json_block["index"] = block.index;
+        json_block["timestamp"] = static_cast<Json::UInt64>(block.timestamp);
+        json_block["nonce"] = block.nonce;
+        json_block["previous_hash"] = block.previous_hash;
+
+        Json::Value json_transactions(Json::arrayValue);
+        for (const auto& transaction : block.transactions) {
+            Json::Value json_transaction;
+            json_transaction["sender"] = transaction.sender;
+            json_transaction["recipient"] = transaction.recipient;
+            json_transaction["amount"] = transaction.amount;
+
+            json_transactions.append(json_transaction);
+        }
+        json_block["transactions"] = json_transactions;
+
+        Json::StreamWriterBuilder builder;
+        builder["indentation"] = "";
+        std::string block_string = Json::writeString(builder, json_block);
+
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256(reinterpret_cast<const unsigned char*>(block_string.c_str()), block_string.size(), hash);
+
+        std::stringstream ss;
+        for (unsigned char i : hash) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(i);
         }
 
-        # Limpe as transações pendentes após adicionar ao bloco
-        self.pending_transactions = []
+        return ss.str();
+    }
 
-        self.chain.append(block)
-
-    def add_transaction(self, transaction):
-        # Implemente a lógica para adicionar uma transação às transações pendentes
-        self.pending_transactions.append(transaction)
-
-    def get_last_block(self):
-        # Implemente a lógica para retornar o último bloco da cadeia
-        return self.chain[-1]
-
-    def mine_block(self, miner_address):
-        # Implemente a lógica para minerar um novo bloco
-        # Isso pode incluir a validação de transações pendentes, a prova de trabalho, etc.
-        last_block = self.get_last_block()
-        previous_hash = self.hash_block(last_block)
-
-        # Simule a prova de trabalho encontrando um nonce válido
-        nonce = self.proof_of_work(previous_hash)
-
-        # Crie um novo bloco na cadeia
-        self.create_block(nonce, previous_hash)
-
-        # Recompense o minerador adicionando uma transação especial
-        reward_transaction = {
-            "sender": "Sistema",
-            "recipient": miner_address,
-            "amount": 10,  # Ajuste a recompensa conforme necessário
+    int proof_of_work(const std::string& previous_hash) {
+        int nonce = 0;
+        while (!valid_proof(previous_hash, nonce)) {
+            nonce++;
         }
-        self.add_transaction(reward_transaction)
+        return nonce;
+    }
 
-        # Retorne o novo bloco minerado
-        return self.get_last_block()
+    bool valid_proof(const std::string& previous_hash, int nonce) {
+        std::string guess = previous_hash + std::to_string(nonce);
 
-    def hash_block(self, block):
-        # Implemente a lógica para calcular o hash de um bloco
-        # Você pode usar a função de hash SHA-256 para isso
-        block_string = json.dumps(block, sort_keys=True).encode()
-        return hashlib.sha256(block_string).hexdigest()
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256(reinterpret_cast<const unsigned char*>(guess.c_str()), guess.size(), hash);
 
-    def proof_of_work(self, previous_hash):
-        # Implemente a lógica para encontrar um nonce válido usando prova de trabalho
-        # Isso pode envolver o cálculo repetido de hashes até encontrar um nonce que satisfaça certos critérios
-        # A dificuldade da prova de trabalho pode ser ajustada para controlar a taxa de mineração
+        std::stringstream ss;
+        for (unsigned char i : hash) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(i);
+        }
 
-        nonce = 0
-        while self.valid_proof(previous_hash, nonce) is False:
-            nonce += 1
+        std::string guess_hash = ss.str();
 
-        return nonce
-
-    def valid_proof(self, previous_hash, nonce):
-        # Implemente a lógica para verificar se um nonce é válido
-        # Isso pode envolver o cálculo de hashes e a comparação com um critério de dificuldade
-
-        guess = f"{previous_hash}{nonce}".encode()
-        guess_hash = hashlib.sha256(guess).hexdigest()
-
-        # Ajuste o critério de dificuldade conforme necessário
-        # Por exemplo, aqui verificamos se os primeiros 4 caracteres do hash são zeros
-        return guess_hash[:4] == "0000"
+        // Ajuste o critério de dificuldade conforme necessário
+        // Por exemplo, aqui verificamos se os primeiros 4 caracteres do hash são zeros
+        return guess_hash.substr(0, 4) == "0000";
+    }
+};

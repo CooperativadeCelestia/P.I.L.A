@@ -1,94 +1,105 @@
-import tkinter as tk
-from PIL import ImageTk, Image
-from blockchain import Blockchain
-from transacoes import Transacoes
-from minerador import Minerador
-from carteira import Carteira
+#include <iostream>
+#include <string>
+#include <vector>
+#include <gtkmm.h>
+#include <gdkmm/pixbuf.h>
 
-# Criação da instância da Blockchain e das transações
-blockchain = Blockchain()
-transacoes = Transacoes()
+#include "blockchain.h"
+#include "transacoes.h"
+#include "minerador.h"
+#include "carteira.h"
 
-# Criação da instância do minerador
-minerador = Minerador(blockchain, transacoes, recompensa=10, nome="EndereçoMinerador")
+int main(int argc, char* argv[]) {
+    // Inicialização do GTKmm
+    auto app = Gtk::Application::create(argc, argv);
 
-# Criação da instância da carteira
-carteira = Carteira(blockchain, transacoes)
+    // Criação da instância da Blockchain e das transações
+    Blockchain blockchain;
+    Transacoes transacoes;
 
-# Função para adicionar uma transação
-def adicionar_transacao():
-    remetente = entry_remetente.get()
-    destinatario = entry_destinatario.get()
-    valor = entry_valor.get()
+    // Criação da instância do minerador
+    Minerador minerador(blockchain, transacoes, 10, "EndereçoMinerador");
 
-    carteira.adicionar_transacao(remetente, destinatario, valor)
+    // Criação da instância da carteira
+    Carteira carteira(blockchain, transacoes);
 
-    entry_remetente.delete(0, tk.END)
-    entry_destinatario.delete(0, tk.END)
-    entry_valor.delete(0, tk.END)
+    // Criação da janela principal
+    Gtk::Window window;
+    window.set_title("Criptomoeda PILA");
+    window.set_default_size(400, 400);
 
-# Função para minerar um bloco
-def minerar_bloco():
-    novo_bloco = minerador.minerar()
+    // Carregamento do logo PILA
+    Glib::RefPtr<Gdk::Pixbuf> logo_pixbuf = Gdk::Pixbuf::create_from_file("pila_logo.png");
+    Gtk::Image logo_image(logo_pixbuf);
 
-    # Atualizar a interface com o novo bloco minerado
-    lbl_bloco_atual.config(text=f"Bloco Atual: {novo_bloco['index']}")
-    lbl_hash_bloco_atual.config(text=f"Hash: {novo_bloco['hash']}")
-    lbl_recompensa_minerador.config(text=f"Recompensa: {novo_bloco['transacoes'][0]['valor']} PILA")
+    // Criação dos frames da interface
+    Gtk::Frame frame_top;
+    Gtk::Frame frame_center;
+    Gtk::Frame frame_bottom;
 
-# Configuração da janela principal
-window = tk.Tk()
-window.title("Criptomoeda PILA")
-window.geometry("400x400")
+    window.add(frame_top);
+    window.add(frame_center);
+    window.add(frame_bottom);
 
-# Carregamento do logo PILA
-logo_image = Image.open("pila_logo.png")
-logo_photo = ImageTk.PhotoImage(logo_image)
-lbl_logo = tk.Label(window, image=logo_photo)
-lbl_logo.pack()
+    // Criação dos widgets da interface
+    Gtk::Label lbl_remetente("Remetente:");
+    Gtk::Entry entry_remetente;
 
-# Criação dos frames da interface
-frame_top = tk.Frame(window)
-frame_top.pack(pady=10)
+    frame_top.add(lbl_remetente);
+    frame_top.add(entry_remetente);
 
-frame_center = tk.Frame(window)
-frame_center.pack(pady=10)
+    Gtk::Label lbl_destinatario("Destinatário:");
+    Gtk::Entry entry_destinatario;
 
-frame_bottom = tk.Frame(window)
-frame_bottom.pack(pady=10)
+    frame_center.add(lbl_destinatario);
+    frame_center.add(entry_destinatario);
 
-# Criação dos widgets da interface
-lbl_remetente = tk.Label(frame_top, text="Remetente:")
-lbl_remetente.pack(side=tk.LEFT)
+    Gtk::Label lbl_valor("Valor:");
+    Gtk::Entry entry_valor;
 
-entry_remetente = tk.Entry(frame_top)
-entry_remetente.pack(side=tk.LEFT)
+    frame_bottom.add(lbl_valor);
+    frame_bottom.add(entry_valor);
 
-lbl_destinatario = tk.Label(frame_center, text="Destinatário:")
-lbl_destinatario.pack(side=tk.LEFT)
+    Gtk::Button btn_adicionar_transacao("Adicionar Transação");
+    btn_adicionar_transacao.signal_clicked().connect([&](){
+        std::string remetente = entry_remetente.get_text();
+        std::string destinatario = entry_destinatario.get_text();
+        double valor = std::stod(entry_valor.get_text());
 
-entry_destinatario = tk.Entry(frame_center)
-entry_destinatario.pack(side=tk.LEFT)
+        carteira.adicionar_transacao(remetente, destinatario, valor);
 
-lbl_valor = tk.Label(frame_bottom, text="Valor:")
-lbl_valor.pack(side=tk.LEFT)
+        entry_remetente.set_text("");
+        entry_destinatario.set_text("");
+        entry_valor.set_text("");
+    });
 
-entry_valor = tk.Entry(frame_bottom)
-entry_valor.pack(side=tk.LEFT)
+    Gtk::Button btn_minerar_bloco("Minerar Bloco");
+    btn_minerar_bloco.signal_clicked().connect([&](){
+        Block novo_bloco = minerador.minerar();
 
-btn_adicionar_transacao = tk.Button(window, text="Adicionar Transação", command=adicionar_transacao)
-btn_adicionar_transacao.pack()
+        // Atualizar a interface com o novo bloco minerado
+        lbl_bloco_atual.set_text("Bloco Atual: " + std::to_string(novo_bloco.index));
+        lbl_hash_bloco_atual.set_text("Hash: " + novo_bloco.hash);
+        lbl_recompensa_minerador.set_text("Recompensa: " + std::to_string(novo_bloco.transacoes[0].valor) + " PILA");
+    });
 
-btn_minerar_bloco = tk.Button(window, text="Minerar Bloco", command=minerar_bloco)
-btn_minerar_bloco.pack()
+    Gtk::Label lbl_bloco_atual("Bloco Atual: -");
+    Gtk::Label lbl_hash_bloco_atual("Hash: -");
+    Gtk::Label lbl_recompensa_minerador("Recompensa: -");
 
-lbl_bloco_atual = tk.Label(window, text="Bloco Atual: -")
-lbl_bloco_atual.pack()
+    Gtk::Box vbox(Gtk::ORIENTATION_VERTICAL);
+    vbox.pack_start(logo_image, Gtk::PACK_SHRINK);
+    vbox.pack_start(frame_top, Gtk::PACK_SHRINK);
+    vbox.pack_start(frame_center, Gtk::PACK_SHRINK);
+    vbox.pack_start(frame_bottom, Gtk::PACK_SHRINK);
+    vbox.pack_start(btn_adicionar_transacao, Gtk::PACK_SHRINK);
+    vbox.pack_start(btn_minerar_bloco, Gtk::PACK_SHRINK);
+    vbox.pack_start(lbl_bloco_atual, Gtk::PACK_SHRINK);
+    vbox.pack_start(lbl_hash_bloco_atual, Gtk::PACK_SHRINK);
+    vbox.pack_start(lbl_recompensa_minerador, Gtk::PACK_SHRINK);
 
-lbl_hash_bloco_atual = tk.Label(window, text="Hash: -")
-lbl_hash_bloco_atual.pack()
+    window.add(vbox);
+    window.show_all();
 
-lbl_recompensa_minerador = tk.Label(window, text="Recompensa: -")
-lbl_recompensa_minerador.pack()
-
-window.mainloop()
+    return app->run(window);
+}

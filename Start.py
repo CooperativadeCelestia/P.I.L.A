@@ -1,95 +1,148 @@
-import tkinter as tk
-from PIL import ImageTk, Image
-from blockchain import Blockchain
-from transacoes import Transacoes
-from minerador import Minerador
+#include <SFML/Graphics.hpp>
+#include <SFML/Window.hpp>
+#include <SFML/System.hpp>
+#include <SFML/Audio.hpp>
+#include <SFML/Network.hpp>
 
-# Criação da instância da Blockchain e das transações
-blockchain = Blockchain()
-transacoes = Transacoes()
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <cstdlib>
+#include <ctime>
 
-# Criação da instância do minerador
-minerador = Minerador(blockchain, transacoes, recompensa=10, nome="EndereçoMinerador")
+#include "Blockchain.h"
+#include "Transacoes.h"
+#include "Minerador.h"
 
-# Função para adicionar uma transação
-def adicionar_transacao():
-    remetente = entry_remetente.get()
-    destinatario = entry_destinatario.get()
-    valor = entry_valor.get()
+int main()
+{
+    sf::RenderWindow window(sf::VideoMode(600, 400), "Criptomoeda PILA");
 
-    transacoes.adicionar_transacao(remetente, destinatario, valor)
+    // Criação da instância da Blockchain e das transações
+    Blockchain blockchain;
+    Transacoes transacoes;
 
-    entry_remetente.delete(0, tk.END)
-    entry_destinatario.delete(0, tk.END)
-    entry_valor.delete(0, tk.END)
+    // Criação da instância do minerador
+    Minerador minerador(blockchain, transacoes, 10, "EndereçoMinerador");
 
-# Função para minerar um bloco
-def minerar_bloco():
-    novo_bloco = minerador.minerar()
+    sf::Font font;
+    if (!font.loadFromFile("arial.ttf"))
+    {
+        // error handling
+    }
 
-    # Atualizar a interface com o novo bloco minerado
-    lbl_bloco_atual.config(text=f"Bloco Atual: {novo_bloco['index']}")
-    lbl_hash_bloco_atual.config(text=f"Hash: {novo_bloco['hash']}")
-    lbl_recompensa_minerador.config(text=f"Recompensa: {novo_bloco['transacoes'][0]['valor']} PILA")
+    // Criação dos elementos de texto
+    sf::Text remetenteText("Remetente:", font, 20);
+    remetenteText.setPosition(10, 10);
 
-# Configuração da janela principal
-window = tk.Tk()
-window.title("Criptomoeda PILA")
-window.geometry("600x400")
+    sf::Text destinatarioText("Destinatário:", font, 20);
+    destinatarioText.setPosition(10, 100);
 
-# Criação dos frames da interface
-frame_top = tk.Frame(window)
-frame_top.pack(pady=10)
+    sf::Text valorText("Valor:", font, 20);
+    valorText.setPosition(10, 190);
 
-frame_center = tk.Frame(window)
-frame_center.pack(pady=10)
+    sf::Text blocoAtualText("Bloco Atual: -", font, 20);
+    blocoAtualText.setPosition(10, 300);
 
-frame_bottom = tk.Frame(window)
-frame_bottom.pack(pady=10)
+    sf::Text hashBlocoAtualText("Hash: -", font, 20);
+    hashBlocoAtualText.setPosition(10, 340);
 
-frame_info = tk.Frame(window)
-frame_info.pack(pady=10)
+    sf::Text recompensaMineradorText("Recompensa: -", font, 20);
+    recompensaMineradorText.setPosition(10, 380);
 
-# Criação dos widgets da interface
-lbl_remetente = tk.Label(frame_top, text="Remetente:")
-lbl_remetente.pack(side=tk.LEFT)
+    // Criação dos campos de entrada
+    sf::RectangleShape remetenteInput(sf::Vector2f(200, 40));
+    remetenteInput.setPosition(150, 10);
+    remetenteInput.setOutlineThickness(2);
+    remetenteInput.setOutlineColor(sf::Color::Black);
 
-entry_remetente = tk.Entry(frame_top)
-entry_remetente.pack(side=tk.LEFT)
+    sf::RectangleShape destinatarioInput(sf::Vector2f(200, 40));
+    destinatarioInput.setPosition(150, 100);
+    destinatarioInput.setOutlineThickness(2);
+    destinatarioInput.setOutlineColor(sf::Color::Black);
 
-lbl_destinatario = tk.Label(frame_center, text="Destinatário:")
-lbl_destinatario.pack(side=tk.LEFT)
+    sf::RectangleShape valorInput(sf::Vector2f(200, 40));
+    valorInput.setPosition(150, 190);
+    valorInput.setOutlineThickness(2);
+    valorInput.setOutlineColor(sf::Color::Black);
 
-entry_destinatario = tk.Entry(frame_center)
-entry_destinatario.pack(side=tk.LEFT)
+    // Criação dos botões
+    sf::RectangleShape adicionarTransacaoButton(sf::Vector2f(200, 40));
+    adicionarTransacaoButton.setPosition(10, 250);
+    adicionarTransacaoButton.setOutlineThickness(2);
+    adicionarTransacaoButton.setOutlineColor(sf::Color::Black);
 
-lbl_valor = tk.Label(frame_bottom, text="Valor:")
-lbl_valor.pack(side=tk.LEFT)
+    sf::RectangleShape minerarBlocoButton(sf::Vector2f(200, 40));
+    minerarBlocoButton.setPosition(220, 250);
+    minerarBlocoButton.setOutlineThickness(2);
+    minerarBlocoButton.setOutlineColor(sf::Color::Black);
 
-entry_valor = tk.Entry(frame_bottom)
-entry_valor.pack(side=tk.LEFT)
+    // Loop principal da janela
+    while (window.isOpen())
+    {
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+                window.close();
 
-btn_adicionar_transacao = tk.Button(window, text="Adicionar Transação", command=adicionar_transacao)
-btn_adicionar_transacao.pack()
+            // Adicionar transação ao clicar no botão "Adicionar Transação"
+            if (event.type == sf::Event::MouseButtonReleased)
+            {
+                if (event.mouseButton.button == sf::Mouse::Left)
+                {
+                    sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
 
-btn_minerar_bloco = tk.Button(window, text="Minerar Bloco", command=minerar_bloco)
-btn_minerar_bloco.pack()
+                    if (adicionarTransacaoButton.getGlobalBounds().contains(mousePosition.x, mousePosition.y))
+                    {
+                        std::string remetente = ""; // Preencha com o valor do campo de entrada remetente
+                        std::string destinatario = ""; // Preencha com o valor do campo de entrada destinatario
+                        std::string valor = ""; // Preencha com o valor do campo de entrada valor
 
-lbl_bloco_atual = tk.Label(frame_info, text="Bloco Atual: -", font=("Arial", 12))
-lbl_bloco_atual.pack()
+                        transacoes.adicionarTransacao(remetente, destinatario, valor);
 
-lbl_hash_bloco_atual = tk.Label(frame_info, text="Hash: -", font=("Arial", 12))
-lbl_hash_bloco_atual.pack()
+                        // Limpar campos de entrada
+                        // Remetente
+                        // Destinatario
+                        // Valor
+                    }
 
-lbl_recompensa_minerador = tk.Label(frame_info, text="Recompensa: -", font=("Arial", 12))
-lbl_recompensa_minerador.pack()
+                    if (minerarBlocoButton.getGlobalBounds().contains(mousePosition.x, mousePosition.y))
+                    {
+                        // Minerar um novo bloco
 
-# Carregar o logo da PILA
-logo = Image.open("pila_logo.png")
-logo = logo.resize((150, 150), Image.ANTIALIAS)
-logo = ImageTk.PhotoImage(logo)
+                        // Atualizar a interface com o novo bloco minerado
+                        std::string blocoAtual = "Bloco Atual: "; // Preencha com o índice do novo bloco minerado
+                        std::string hashBlocoAtual = "Hash: "; // Preencha com o hash do novo bloco minerado
+                        std::string recompensaMinerador = "Recompensa: "; // Preencha com a recompensa do minerador
 
-lbl_logo = tk.Label(window, image=logo)
-lbl_logo.pack()
+                        blocoAtualText.setString(blocoAtual);
+                        hashBlocoAtualText.setString(hashBlocoAtual);
+                        recompensaMineradorText.setString(recompensaMinerador);
+                    }
+                }
+            }
+        }
 
-window.mainloop()
+        window.clear(sf::Color::White);
+
+        window.draw(remetenteText);
+        window.draw(destinatarioText);
+        window.draw(valorText);
+        window.draw(blocoAtualText);
+        window.draw(hashBlocoAtualText);
+        window.draw(recompensaMineradorText);
+
+        window.draw(remetenteInput);
+        window.draw(destinatarioInput);
+        window.draw(valorInput);
+
+        window.draw(adicionarTransacaoButton);
+        window.draw(minerarBlocoButton);
+
+        window.display();
+    }
+
+    return 0;
+}

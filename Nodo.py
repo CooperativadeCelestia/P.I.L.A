@@ -1,76 +1,139 @@
-import hashlib
-import time
+#include <iostream>
+#include <vector>
+#include <string>
+#include <ctime>
+#include <cstdlib>
+#include <sstream>
+#include <iomanip>
+#include <openssl/sha.h>
 
-class Block:
-    def __init__(self, index, timestamp, transactions, previous_hash):
-        self.index = index
-        self.timestamp = timestamp
-        self.transactions = transactions
-        self.previous_hash = previous_hash
-        self.nonce = 0
-        self.hash = self.calculate_hash()
+class Block {
+private:
+    int index;
+    std::time_t timestamp;
+    std::vector<std::string> transactions;
+    std::string previous_hash;
+    int nonce;
+    std::string hash;
 
-    def calculate_hash(self):
-        data = str(self.index) + str(self.timestamp) + str(self.transactions) + str(self.previous_hash) + str(self.nonce)
-        return hashlib.sha256(data.encode()).hexdigest()
+public:
+    Block(int index, std::time_t timestamp, const std::vector<std::string>& transactions, const std::string& previous_hash)
+        : index(index), timestamp(timestamp), transactions(transactions), previous_hash(previous_hash), nonce(0) {
+        hash = calculate_hash();
+    }
 
-    def mine_block(self, difficulty):
-        target = "0" * difficulty
-        while self.hash[:difficulty] != target:
-            self.nonce += 1
-            self.hash = self.calculate_hash()
+    std::string calculate_hash() {
+        std::stringstream ss;
+        ss << index << timestamp;
+        for (const std::string& transaction : transactions) {
+            ss << transaction;
+        }
+        ss << previous_hash << nonce;
 
-    def __str__(self):
-        return f"Block #{self.index} [Timestamp: {self.timestamp}, Nonce: {self.nonce}, Hash: {self.hash}]"
+        unsigned char digest[SHA256_DIGEST_LENGTH];
+        SHA256_CTX sha256;
+        SHA256_Init(&sha256);
+        SHA256_Update(&sha256, ss.str().c_str(), ss.str().length());
+        SHA256_Final(digest, &sha256);
 
+        std::stringstream hash_ss;
+        for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+            hash_ss << std::hex << std::setw(2) << std::setfill('0') << (int)digest[i];
+        }
 
-class Blockchain:
-    def __init__(self, difficulty=2, reward=10):
-        self.difficulty = difficulty
-        self.reward = reward
-        self.chain = [self.create_genesis_block()]
-        self.pending_transactions = []
+        return hash_ss.str();
+    }
 
-    def create_genesis_block(self):
-        return Block(0, time.time(), "Genesis Block", "0")
+    void mine_block(int difficulty) {
+        std::string target(difficulty, '0');
+        while (hash.substr(0, difficulty) != target) {
+            ++nonce;
+            hash = calculate_hash();
+        }
+    }
 
-    def get_last_block(self):
-        return self.chain[-1]
+    friend std::ostream& operator<<(std::ostream& os, const Block& block) {
+        os << "Block #" << block.index << " [Timestamp: " << block.timestamp
+           << ", Nonce: " << block.nonce << ", Hash: " << block.hash << "]";
+        return os;
+    }
+};
 
-    def add_transaction(self, sender, recipient, amount):
-        self.pending_transactions.append({"sender": sender, "recipient": recipient, "amount": amount})
+class Blockchain {
+private:
+    int difficulty;
+    int reward;
+    std::vector<Block> chain;
+    std::vector<std::string> pending_transactions;
 
-    def mine_pending_transactions(self, miner_address):
-        block = Block(len(self.chain), time.time(), self.pending_transactions, self.get_last_block().hash)
-        block.mine_block(self.difficulty)
-        self.chain.append(block)
+public:
+    Blockchain(int difficulty = 2, int reward = 10) : difficulty(difficulty), reward(reward) {
+        chain.push_back(create_genesis_block());
+    }
 
-        self.pending_transactions = [{"sender": None, "recipient": miner_address, "amount": self.reward}]
+    Block create_genesis_block() {
+        std::time_t current_time = std::time(nullptr);
+        return Block(0, current_time, {"Genesis Block"}, "0");
+    }
 
-    def is_chain_valid(self):
-        for i in range(1, len(self.chain)):
-            current_block = self.chain[i]
-            previous_block = self.chain[i - 1]
+    Block get_last_block() {
+        return chain.back();
+    }
 
-            if current_block.hash != current_block.calculate_hash():
-                return False
+    void add_transaction(const std::string& sender, const std::string& recipient, int amount) {
+        std::stringstream ss;
+        ss << sender << recipient << amount;
+        pending_transactions.push_back(ss.str());
+    }
 
-            if current_block.previous_hash != previous_block.hash:
-                return False
+    void mine_pending_transactions(const std::string& miner_address) {
+        std::time_t current_time = std::time(nullptr);
+        Block block(chain.size(), current_time, pending_transactions, get_last_block().hash);
+        block.mine_block(difficulty);
+        chain.push_back(block);
 
-        return True
+        std::stringstream ss;
+        ss << "None" << miner_address << reward;
+        pending_transactions.clear();
+        pending_transactions.push_back(ss.str());
+    }
 
+    bool is_chain_valid() {
+        for (int i = 1; i < chain.size(); ++i) {
+            const Block& current_block = chain[i];
+            const Block& previous_block = chain[i - 1];
 
-# Exemplo de uso
-pila = Blockchain(difficulty=3, reward=10)
+            if (current_block.hash != current_block.calculate_hash()) {
+                return false;
+            }
 
-pila.add_transaction("Endereco1", "Endereco2", 5)
-pila.add_transaction("Endereco2", "Endereco3", 2)
+            if (current_block.previous_hash != previous_block.hash) {
+                return false;
+            }
+        }
 
-miner_address = "EnderecoMinerador"
-pila.mine_pending_transactions(miner_address)
+        return true;
+    }
 
-print("Blockchain válida?", pila.is_chain_valid())
-print("Blockchain:")
-for block in pila.chain:
-    print(block)
+    void print_chain() {
+        for (const Block& block : chain) {
+            std::cout << block << std::endl;
+        }
+    }
+};
+
+int main() {
+    Blockchain pila(3, 10);
+
+    pila.add_transaction("Endereco1", "Endereco2", 5);
+    pila.add_transaction("Endereco2", "Endereco3", 2);
+
+    std::string miner_address = "EnderecoMinerador";
+    pila.mine_pending_transactions(miner_address);
+
+    std::cout << "Blockchain válida? " << (pila.is_chain_valid() ? "Sim" : "Não") << std::endl;
+    std::cout << "Blockchain:" << std::endl;
+    pila.print_chain();
+
+    return 0;
+}
